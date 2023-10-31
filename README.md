@@ -2,7 +2,7 @@
 
 is another wrapper around [ZeroMQ](https://zeromq.org/)'s [Publish-Subscribe](https://zeromq.org/socket-api/#publish-subscribe-pattern) messaging pattern with mandatory [Curve](https://rfc.zeromq.org/spec/26/) security and optional [ZAP](https://rfc.zeromq.org/spec/27/) authentication filter, over [Tor](https://torproject.org), through Tor SOCKS proxy, for distributed artificial elife, decision making etc. systems where each peer, identified by its public key, onion address, and port, publishes and updates vectors of vectors of bytes of data under unique topics that other peers subscribe to and receive the respective data.
 
-Requires [Go](https://go.dev/dl/), [libzmq](https://github.com/zeromq/libzmq) ([more on build](http://wiki.zeromq.org/build:_start), but e.g. [`libzmq3-dev`](https://packages.ubuntu.com/search?keywords=libzmq3-dev) and [`libzmq5`](https://packages.ubuntu.com/search?keywords=libzmq5) packages in Linux suffice), and [Tor](https://community.torproject.org/onion-services/setup/install/).
+Requires [Go](https://go.dev/dl/), [libzmq](https://github.com/zeromq/libzmq) ([more on build](http://wiki.zeromq.org/build:_start), but e.g. [`libzmq3-dev` and `libzmq5` packages](https://github.com/zeromq/libzmq#linux) in Linux suffice), and [Tor](https://community.torproject.org/onion-services/setup/install/).
 
 Versions in other languages:
 
@@ -53,11 +53,11 @@ then check if there are any problems:
 $ systemctl status tor@default
 ```
 
-should show `... active(running) ...`
+should show `... active(running) ...` and `... Bootstrapped 100% (done): Done ...`
 
 Wait a little for 3 specified dirs to appear, and, in each of them, the file `hostname`.
 
-Now download Emyzelium files, say, to `~/emz-go/`. Open `demo/demo.go` and, right after imports, change `AlienOnion` value to onion address from `/var/lib/tor/p2p_dummysite1/hostname` *without `.onion` suffix*. Also change `AlienPort` value to `60847` if it is something else.
+Now download Emyzelium files, say, to `~/emz-go/`. Open `_demo/demo.go` and, right after imports, change `AlienOnion` value to onion address from `/var/lib/tor/p2p_dummysite1/hostname` *without `.onion` suffix*. Also change `AlienPort` value to `60847` if it is something else.
 
 Make analogous changes to `JohnOnion`, `JohnPort` (2) and `MaryOnion`, `MaryPort` (3). Save changes to `demo.go`.
 
@@ -77,13 +77,13 @@ term2$ torsocks nc -v ONION1.onion 60847
 
 ---
 
-From `~/emz-go/demo/` build by
+From `~/emz-go/_demo/` build the executable `demo` by
 
 ```shell
-$ go build *.go
+$ go build
 ```
 
-Finally, to emyzeliumisation of Life. Open 3 terminals and from `~/emz-go/demo/` run the following in any order:
+Finally, to emyzeliumisation of Life. Open 3 terminals and from `~/emz-go/_demo/` run the following in any order:
 
 ```shell
 term1$ ./demo Alien
@@ -209,7 +209,7 @@ func main() {
 }
 ```
 
-Note Emyzelium is not used here; on the other hand, this very code is in `genkeypair/genkeypair.go`.
+Note Emyzelium is not used here; on the other hand, this very code is in `_genkeypair/genkeypair.go`.
 
 Obviously, *keys are not arbitrary ASCII strings of length 40* that could be "typed by smashing on keyboard". In particular, the public one can be derived from the secret one:
 
@@ -240,7 +240,13 @@ More on this below, but for now, consider these limitations and decide if they a
 
 In case they do and one of your programs is in Go, proceed. Otherwise, see [S&B](#sab), [this list](https://en.wikipedia.org/wiki/Category:Message-oriented_middleware) etc.
 
-Code snippets below assume `go get github.com/emyzelium/emyzelium-go` and
+Code snippets below assume
+
+```shell
+$ go get github.com/emyzelium/emyzelium-go
+```
+
+and
 
 ```go
 import (
@@ -382,7 +388,7 @@ if etale, err := ehypha.GetEtale(title); err == nil {
 **Etale**, a.k.a. partitioned data chunk with metadata, is the main data unit that efungi exchange.
 It has the following public methods to access its read-only fields:
 
-* `Parts() [][]byte` is the (copy of) the latest obtained data
+* `Parts() [][]byte` is the (copy of the) latest obtained data
 
 * `TOut() int64` is the time in microseconds since Unix epoch, measured at sender, when the etale was published
 
@@ -412,11 +418,11 @@ Here it is bidirectional, but may be unidirectional as well. For this to work, e
 
 **Q.** How reliable Emyzelium is? How secure? Are there backdoors?
 
-**A.** No "audit" has been performed, so... read the source through carefully, it is small enough — Go version is smaller than this README. The buck then goes to underlying layers — ZeroMQ, Curve, Tor, TCP/IP etc. Sorry, there is no other way if you trust only yourself of today.
+**A.** No "audit" has been performed, so... read the source through carefully, it is small enough — Go version is smaller than this README. The buck then goes to underlying layers — ZeroMQ, Curve, Tor, TCP/IP, BIOS/EFI, hardware etc. Sorry, there is no other way if you trust only yourself of current Planck time unit.
 
 Yes, there are backdoors. No, there are no backdoors.
 
-Do not omit sanity checks of received etales and during their deserialization.
+Do not omit sanity checks of received etales and during their deserialisation.
 
 Do not use keys from demo, generate your own unique pairs.
 

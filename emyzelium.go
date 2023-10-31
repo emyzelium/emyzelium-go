@@ -31,7 +31,7 @@
  */
 
 /*
- * Source
+ * Library
  */
 
 package emyzelium
@@ -40,12 +40,9 @@ package emyzelium
 #cgo LDFLAGS: -lzmq
 
 #include "zmq.h"
+
 #include "stdlib.h"
 #include "string.h"
-
-void zmq_free_cfn(void *data, void *hint) {
-	free(data);
-}
 */
 import "C"
 
@@ -62,8 +59,8 @@ import (
 )
 
 const (
-	LibVersion string = "0.9.2+"
-	LibDate    string = "2023.10.23"
+	LibVersion string = "0.9.4"
+	LibDate    string = "2023.10.31"
 
 	DefPubSubPort uint16 = 0xEDAF // 60847
 
@@ -75,7 +72,6 @@ const (
 	keyBinLen     int = 32
 
 	defIPv6Status int = 1
-	defLinger     int = 0
 
 	curveMechanismId string = "CURVE" // See https://rfc.zeromq.org/spec/27/
 	zapDomain        string = "emyz"
@@ -141,6 +137,13 @@ func zmqeConnect(socket unsafe.Pointer, endPoint string) int {
 	return int(cR)
 }
 
+func zmqeDisconnect(socket unsafe.Pointer, endPoint string) int {
+	endPointBuf := []byte(endPoint)
+	endPointBuf = append(endPointBuf, 0)
+	cR := C.zmq_disconnect(socket, (*C.char)(unsafe.Pointer(&endPointBuf[0])))
+	return int(cR)
+}
+
 func zmqeSetSockOptInt(socket unsafe.Pointer, optionName C.int, optionValue int) int {
 	cOptionValue := C.int(optionValue)
 	cR := C.zmq_setsockopt(socket, optionName, unsafe.Pointer(&cOptionValue), C.sizeof_int)
@@ -175,11 +178,10 @@ func zmqeSend(socket unsafe.Pointer, parts [][]byte) {
 	var msg C.zmq_msg_t
 	for i := 0; i < len(parts); i++ {
 		cSize := C.size_t(len(parts[i]))
-		cData := C.malloc(cSize)
+		C.zmq_msg_init_size(&msg, cSize)
 		if cSize > 0 {
-			C.memcpy(cData, unsafe.Pointer(&parts[i][0]), cSize)
+			C.memcpy(C.zmq_msg_data(&msg), unsafe.Pointer(&parts[i][0]), cSize)
 		}
-		C.zmq_msg_init_data(&msg, cData, cSize, (*C.zmq_free_fn)(C.zmq_free_cfn), C.NULL)
 		var flags C.int = 0
 		if (i + 1) < len(parts) {
 			flags = C.ZMQ_SNDMORE
@@ -250,7 +252,6 @@ func (e *Etale) TIn() int64 {
 
 func (e *Ehypha) init(context unsafe.Pointer, secretKey string, publicKey string, serverKey string, onion string, port uint16, torProxyPort uint16, torProxyHost string) {
 	e.subSocket = C.zmq_socket(context, C.ZMQ_SUB)
-	zmqeSetSockOptInt(e.subSocket, C.ZMQ_LINGER, defLinger)
 	zmqeSetSockOptStr(e.subSocket, C.ZMQ_CURVE_SECRETKEY, secretKey)
 	zmqeSetSockOptStr(e.subSocket, C.ZMQ_CURVE_PUBLICKEY, publicKey)
 	zmqeSetSockOptStr(e.subSocket, C.ZMQ_CURVE_SERVERKEY, serverKey)
@@ -363,7 +364,9 @@ func (e *Ehypha) update() {
 }
 
 func (e *Ehypha) drop() {
+	e.etales = make(map[string]*Etale)
 	C.zmq_close(e.subSocket)
+	e.subSocket = nil
 }
 
 func (e *Efunguz) Init(secretKey string, whitelistPublicKeys map[string]bool, pubPort uint16, torProxyPort uint16, torProxyHost string) {
@@ -383,10 +386,10 @@ func (e *Efunguz) Init(secretKey string, whitelistPublicKeys map[string]bool, pu
 	e.context = C.zmq_ctx_new()
 
 	C.zmq_ctx_set(e.context, C.ZMQ_IPV6, C.int(defIPv6Status))
+	C.zmq_ctx_set(e.context, C.ZMQ_BLOCKY, 0)
 
 	// At first, REP socket for ZAP auth...
 	e.zapSocket = C.zmq_socket(e.context, C.ZMQ_REP)
-	zmqeSetSockOptInt(e.zapSocket, C.ZMQ_LINGER, defLinger)
 	zmqeBind(e.zapSocket, "inproc://zeromq.zap.01")
 
 	e.zapSessionId = make([]byte, zapSessionIdLen)
@@ -394,7 +397,6 @@ func (e *Efunguz) Init(secretKey string, whitelistPublicKeys map[string]bool, pu
 
 	// ..and only then, PUB socket
 	e.pubSocket = C.zmq_socket(e.context, C.ZMQ_PUB)
-	zmqeSetSockOptInt(e.pubSocket, C.ZMQ_LINGER, defLinger)
 	zmqeSetSockOptInt(e.pubSocket, C.ZMQ_CURVE_SERVER, 1)
 	zmqeSetSockOptStr(e.pubSocket, C.ZMQ_CURVE_SECRETKEY, e.secretKey)
 	zmqeSetSockOptVec(e.pubSocket, C.ZMQ_ZAP_DOMAIN, []byte(zapDomain)) // to enable auth, must be non-empty due to ZMQ RFC 27
@@ -519,7 +521,7 @@ func (e *Efunguz) Update() {
 
 func (e *Efunguz) Drop() {
 	for _, eh := range e.ehyphae {
-		eh.drop() // to close subSocket of each ehypha before terminating context, to which those sockets belong
+		eh.drop() // to close subSocket of each ehypha before terminating context, to which those sockets belong; freezes otherwise
 	}
 	e.ehyphae = make(map[string]*Ehypha)
 
@@ -527,5 +529,21 @@ func (e *Efunguz) Drop() {
 	C.zmq_close(e.zapSocket)
 
 	C.zmq_ctx_shutdown(e.context)
-	C.zmq_ctx_term(e.context)
+	for C.zmq_ctx_term(e.context) == -1 {
+		if C.zmq_errno() == C.EINTR {
+			continue
+		} else {
+			break
+		}
+	}
+
+	e.secretKey = ""
+	e.publicKey = ""
+	e.whitelistPublicKeys = map[string]bool{}
+	e.torProxyPort = 0
+	e.torProxyHost = ""
+	e.context = nil
+	e.zapSocket = nil
+	e.zapSessionId = []byte{}
+	e.pubSocket = nil
 }

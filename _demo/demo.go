@@ -478,6 +478,7 @@ func (r *RealmCA) run(scr tcell.Screen) {
 
 func (r *RealmCA) drop() {
 	r.efunguz.Drop()
+	r.efunguz = nil
 }
 
 func run_realm(name string) error {
@@ -486,19 +487,17 @@ func run_realm(name string) error {
 		return errors.New("Cannot make new screen")
 	}
 
-	if err := scr.Init(); err != nil {
-		return errors.New("Cannot init new screen")
-	}
-
-	fin := func() {
+	defer func() {
 		maybePanic := recover()
 		scr.Fini()
 		if maybePanic != nil {
 			panic(maybePanic)
 		}
-	}
+	}()
 
-	defer fin()
+	if err := scr.Init(); err != nil {
+		return errors.New("Cannot init new screen")
+	}
 
 	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
 	scr.SetStyle(defStyle)
@@ -563,6 +562,9 @@ func run_realm(name string) error {
 	var realm RealmCA
 	realm.init(name, secretKey, map[string]bool{}, pubPort, height, width, birth, survival, defAutoemitInterval, defFramerate)
 
+	// Uncomment to restrict: Alien gets data from John and Mary; John gets data from Alien but not from Mary; Mary gets data from neither Alien, nor John
+	// realm.efunguz.AddWhitelistPublicKeys(map[string]bool{that1PublicKey: true})
+
 	realm.addOther(that1Name, that1PublicKey, that1Onion, that1Port)
 	realm.addOther(that2Name, that2PublicKey, that2Onion, that2Port)
 
@@ -573,11 +575,6 @@ func run_realm(name string) error {
 	realm.drop()
 
 	return nil
-}
-
-type MS struct {
-	a int
-	b string
 }
 
 func main() {
