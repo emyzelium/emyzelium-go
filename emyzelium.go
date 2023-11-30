@@ -59,8 +59,8 @@ import (
 )
 
 const (
-	LibVersion string = "0.9.4"
-	LibDate    string = "2023.10.31"
+	LibVersion string = "0.9.6"
+	LibDate    string = "2023.11.30"
 
 	DefPubSubPort uint16 = 0xEDAF // 60847
 
@@ -123,55 +123,50 @@ func cutPadKeyStr(s string) string {
 	}
 }
 
-func zmqeBind(socket unsafe.Pointer, endPoint string) int {
+func zmqeBind(socket unsafe.Pointer, endPoint string) C.int {
 	endPointBuf := []byte(endPoint)
 	endPointBuf = append(endPointBuf, 0)
-	cR := C.zmq_bind(socket, (*C.char)(unsafe.Pointer(&endPointBuf[0])))
-	return int(cR)
+	return C.zmq_bind(socket, (*C.char)(unsafe.Pointer(&endPointBuf[0])))
 }
 
-func zmqeConnect(socket unsafe.Pointer, endPoint string) int {
+func zmqeConnect(socket unsafe.Pointer, endPoint string) C.int {
 	endPointBuf := []byte(endPoint)
 	endPointBuf = append(endPointBuf, 0)
-	cR := C.zmq_connect(socket, (*C.char)(unsafe.Pointer(&endPointBuf[0])))
-	return int(cR)
+	return C.zmq_connect(socket, (*C.char)(unsafe.Pointer(&endPointBuf[0])))
 }
 
-func zmqeDisconnect(socket unsafe.Pointer, endPoint string) int {
-	endPointBuf := []byte(endPoint)
-	endPointBuf = append(endPointBuf, 0)
-	cR := C.zmq_disconnect(socket, (*C.char)(unsafe.Pointer(&endPointBuf[0])))
-	return int(cR)
-}
-
-func zmqeSetSockOptInt(socket unsafe.Pointer, optionName C.int, optionValue int) int {
+func zmqeSetSockOptInt(socket unsafe.Pointer, optionName C.int, optionValue int) C.int {
 	cOptionValue := C.int(optionValue)
-	cR := C.zmq_setsockopt(socket, optionName, unsafe.Pointer(&cOptionValue), C.sizeof_int)
-	return int(cR)
+	return C.zmq_setsockopt(socket, optionName, unsafe.Pointer(&cOptionValue), C.sizeof_int)
 }
 
-func zmqeSetSockOptStr(socket unsafe.Pointer, optionName C.int, optionValue string) int {
+func zmqeSetSockOptStr(socket unsafe.Pointer, optionName C.int, optionValue string) C.int {
 	valueBuf := []byte(optionValue)
 	valueBuf = append(valueBuf, 0)
-	cR := C.zmq_setsockopt(socket, optionName, unsafe.Pointer(&valueBuf[0]), C.size_t(len(valueBuf)))
-	return int(cR)
+	return C.zmq_setsockopt(socket, optionName, unsafe.Pointer(&valueBuf[0]), C.size_t(len(valueBuf)))
 }
 
-func zmqeSetSockOptVec(socket unsafe.Pointer, optionName C.int, optionValue []byte) int {
-	cR := C.zmq_setsockopt(socket, optionName, unsafe.Pointer(&optionValue[0]), C.size_t(len(optionValue)))
-	return int(cR)
+func zmqeSetSockOptVec(socket unsafe.Pointer, optionName C.int, optionValue []byte) C.int {
+	return C.zmq_setsockopt(socket, optionName, unsafe.Pointer(&optionValue[0]), C.size_t(len(optionValue)))
 }
 
-func zmqeCurvePublic(secretKey string) (string, int) {
+func zmqeGetSockOptEvents(socket unsafe.Pointer) C.int {
+	var optionValue C.int
+	var optionLen C.size_t = C.sizeof_int
+	C.zmq_getsockopt(socket, C.ZMQ_EVENTS, unsafe.Pointer(&optionValue), (*C.size_t)(&optionLen))
+	return optionValue
+}
+
+func zmqeCurvePublic(secretKey string) (string, C.int) {
 	secretKey = cutPadKeyStr(secretKey)
 	secretKeyBuf := []byte(secretKey)
 	secretKeyBuf = append(secretKeyBuf, 0)
 	var publicKeyBuf [keyZ85CStrLen]byte
 	cR := C.zmq_curve_public((*C.char)(unsafe.Pointer(&publicKeyBuf[0])), (*C.char)(unsafe.Pointer(&secretKeyBuf[0])))
 	if cR != 0 {
-		return "", int(cR)
+		return "", cR
 	}
-	return string(publicKeyBuf[:keyZ85Len]), 0
+	return string(publicKeyBuf[:keyZ85Len]), cR
 }
 
 func zmqeSend(socket unsafe.Pointer, parts [][]byte) {
@@ -213,16 +208,6 @@ func zmqeRecv(socket unsafe.Pointer) [][]byte {
 		}
 	}
 	return parts
-}
-
-func zmqePollInNow(socket unsafe.Pointer) int {
-	var zpi C.zmq_pollitem_t
-	zpi.socket = socket
-	zpi.fd = 0
-	zpi.events = C.ZMQ_POLLIN
-	zpi.revents = 0
-	cR := C.zmq_poll(&zpi, 1, 0)
-	return int(cR)
 }
 
 func (e *Etale) init() {
@@ -339,7 +324,7 @@ func (e *Ehypha) ResumeEtales() {
 
 func (e *Ehypha) update() {
 	t := timeMuSec()
-	for zmqePollInNow(e.subSocket) > 0 {
+	for zmqeGetSockOptEvents(e.subSocket)&C.ZMQ_POLLIN != 0 {
 		msgParts := zmqeRecv(e.subSocket)
 		// Sanity checks...
 		if len(msgParts) >= 2 {
@@ -481,7 +466,7 @@ func (e *Efunguz) EmitEtale(title string, parts [][]byte) {
 }
 
 func (e *Efunguz) Update() {
-	for zmqePollInNow(e.zapSocket) > 0 {
+	for zmqeGetSockOptEvents(e.zapSocket)&C.ZMQ_POLLIN != 0 {
 		request := zmqeRecv(e.zapSocket)
 		var reply [][]byte
 

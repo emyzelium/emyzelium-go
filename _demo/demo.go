@@ -52,17 +52,17 @@ import (
 const (
 	AlienSecretKey string = "gr6Y.04i(&Y27ju0g7m0HvhG0:rDmx<Y[FvH@*N("
 	AlienPublicKey string = "iGxlt)JYh!P9xPCY%BlY4Y]c^<=W)k^$T7GirF[R"
-	AlienOnion     string = "PLACEHOLDER PLACEHOLDER PLACEHOLDER PLACEHOLDER PLACEHOL"
+	AlienOnion     string = "PLACEHOLDER PLACEHOLDER PLACEHOLDER PLACEHOLDER PLACEHOL" // from service_dir/hostname, without .onion
 	AlienPort      uint16 = 60847
 
 	JohnSecretKey string = "gbMF0ZKztI28i6}ax!&Yw/US<CCA9PLs.Osr3APc"
 	JohnPublicKey string = "(>?aRHs!hJ2ykb?B}t6iGgo3-5xooFh@9F/4C:DW"
-	JohnOnion     string = "PLACEHOLDER PLACEHOLDER PLACEHOLDER PLACEHOLDER PLACEHOL"
+	JohnOnion     string = "PLACEHOLDER PLACEHOLDER PLACEHOLDER PLACEHOLDER PLACEHOL" // from service_dir/hostname, without .onion
 	JohnPort      uint16 = 60848
 
 	MarySecretKey string = "7C*zh5+-8jOI[+^sh[dbVnW{}L!A&7*=j/a*h5!Y"
 	MaryPublicKey string = "WR)%3-d9dw)%3VQ@O37dVe<09FuNzI{vh}Vfi+]0"
-	MaryOnion     string = "PLACEHOLDER PLACEHOLDER PLACEHOLDER PLACEHOLDER PLACEHOL"
+	MaryOnion     string = "PLACEHOLDER PLACEHOLDER PLACEHOLDER PLACEHOLDER PLACEHOL" // from service_dir/hostname, without .onion
 	MaryPort      uint16 = 60849
 
 	defAutoemitInterval float64 = 4.0

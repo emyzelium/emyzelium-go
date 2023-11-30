@@ -194,11 +194,11 @@ const (
 	keyZ85CStrLen     = keyZ85Len + 1
 )
 
-func zmqeCurveKeyPair() (string, string, int) {
+func zmqeCurveKeyPair() (string, string, C.int) {
 	var secretKeyBuf [keyZ85CStrLen]byte
 	var publicKeyBuf [keyZ85CStrLen]byte
 	cR := C.zmq_curve_keypair((*C.char)(unsafe.Pointer(&publicKeyBuf[0])), (*C.char)(unsafe.Pointer(&secretKeyBuf[0])))
-	return string(publicKeyBuf[:keyZ85Len]), string(secretKeyBuf[:keyZ85Len]), int(cR)
+	return string(publicKeyBuf[:keyZ85Len]), string(secretKeyBuf[:keyZ85Len]), cR
 }
 
 func main() {
