@@ -172,7 +172,8 @@ Emyzelium relies on ZeroMQ's Curve and ZAP encryption and authentication schemes
 
 Emyzelium's methods expect the keys as `string`-s in Z85 encoding.
 
-To obtain such pair of keys,
+<details>
+<summary><b>How to obtain such pair of keys</b></summary>
 
 ```go
 package main
@@ -210,8 +211,14 @@ func main() {
 ```
 
 Note Emyzelium is not used here; on the other hand, this very code is in `_genkeypair/genkeypair.go`.
+</details>
 
-Obviously, *keys are not arbitrary ASCII strings of length 40* that could be "typed by smashing on keyboard". In particular, the public one can be derived from the secret one:
+---
+
+Obviously, *keys are not arbitrary ASCII strings of length 40* that could be "typed by smashing on keyboard". In particular,
+
+<details>
+<summary><b>How to derive the public one from the secret one</b></summary>
 
 ```go
 ...
@@ -221,6 +228,9 @@ var publicKeyBuf [keyZ85CStrLen]byte
 C.zmq_curve_public((*C.char)(unsafe.Pointer(&publicKeyBuf[0])), (*C.char)(unsafe.Pointer(&secretKeyBuf[0])))
 fmt.Printf("Public key: %s", string(publicKeyBuf[:keyZ85Len]))
 ```
+</details>
+
+---
 
 You construct peers with unique secret keys, one for each. No one except you or those whom you trust should know these keys. Anyone who wants to communicate with your peers must know the corresponding public keys. Accordingly, you must know the public keys of peers run by others if you want to communicate with them, in addition to their onion and port. Using "whitelist" feature (see below) based on ZAP, the owner of a peer can restrict those who are able to communicate with this peer.
 
@@ -350,9 +360,11 @@ for !quit { // main program loop
 }
 ```
 
+* get the count of current accepted incoming connections from other efungi via `InConnectionsNum()`
+
 See also `RealmCA.run()` in `demo.go`.
 
-*Internally, Efunguz owns ZeroMQ context, PUB socket for etales, and REP socket for ZAP authentication.*
+*Internally, Efunguz owns ZeroMQ context, PUB socket for etales, REP socket for ZAP authentication, and PAIR socket monitoring PUB.*
 
 ---
 

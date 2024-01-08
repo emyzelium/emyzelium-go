@@ -14,7 +14,7 @@
  *
  * emyzelium@protonmail.com
  *
- * Copyright (c) 2023 Emyzelium caretakers
+ * Copyright (c) 2023-2024 Emyzelium caretakers
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -379,7 +379,7 @@ func (r *RealmCA) run(scr tcell.Screen) {
 				printStrDef(scr, 0, 0, "Render OFF")
 			}
 
-			printStrDef(scr, (h>>1)+2, 0, fmt.Sprintf("This realm: \"%s's\" (birth: %s, survival: %s), SLE %.1f, autoemit (%.1f) %s", r.name, intset_to_str(r.birth, true), intset_to_str(r.survival, true), t-tLastEmit, r.autoemitInterval, map[bool]string{false: "OFF", true: "ON"}[autoemit]))
+			printStrDef(scr, (h>>1)+2, 0, fmt.Sprintf("This realm: \"%s's\" (birth: %s, survival: %s), SLE %.1f, autoemit (%.1f) %s, InConnsN %d", r.name, intset_to_str(r.birth, true), intset_to_str(r.survival, true), t-tLastEmit, r.autoemitInterval, map[bool]string{false: "OFF", true: "ON"}[autoemit], r.efunguz.InConnectionsNum()))
 			othersStr := ""
 			for i := 0; i < len(r.others); i++ {
 				if i > 0 {

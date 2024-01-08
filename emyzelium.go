@@ -14,7 +14,7 @@
  *
  * emyzelium@protonmail.com
  *
- * Copyright (c) 2023 Emyzelium caretakers
+ * Copyright (c) 2023-2024 Emyzelium caretakers
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -59,8 +59,8 @@ import (
 )
 
 const (
-	LibVersion string = "0.9.6"
-	LibDate    string = "2023.11.30"
+	LibVersion string = "0.9.8"
+	LibDate    string = "2024.01.08"
 
 	DefPubSubPort uint16 = 0xEDAF // 60847
 
@@ -108,6 +108,8 @@ type Efunguz struct {
 	zapSocket           unsafe.Pointer
 	zapSessionId        []byte
 	pubSocket           unsafe.Pointer
+	monSocket           unsafe.Pointer
+	inConnNum           uint
 }
 
 func timeMuSec() int64 {
@@ -133,6 +135,12 @@ func zmqeConnect(socket unsafe.Pointer, endPoint string) C.int {
 	endPointBuf := []byte(endPoint)
 	endPointBuf = append(endPointBuf, 0)
 	return C.zmq_connect(socket, (*C.char)(unsafe.Pointer(&endPointBuf[0])))
+}
+
+func zmqeSocketMonitorAll(socket unsafe.Pointer, endPoint string) C.int {
+	endPointBuf := []byte(endPoint)
+	endPointBuf = append(endPointBuf, 0)
+	return C.zmq_socket_monitor(socket, (*C.char)(unsafe.Pointer(&endPointBuf[0])), C.ZMQ_EVENT_ALL)
 }
 
 func zmqeSetSockOptInt(socket unsafe.Pointer, optionName C.int, optionValue int) C.int {
@@ -386,7 +394,15 @@ func (e *Efunguz) Init(secretKey string, whitelistPublicKeys map[string]bool, pu
 	zmqeSetSockOptStr(e.pubSocket, C.ZMQ_CURVE_SECRETKEY, e.secretKey)
 	zmqeSetSockOptVec(e.pubSocket, C.ZMQ_ZAP_DOMAIN, []byte(zapDomain)) // to enable auth, must be non-empty due to ZMQ RFC 27
 	zmqeSetSockOptVec(e.pubSocket, C.ZMQ_ROUTING_ID, e.zapSessionId)    // to make sure only this pubSocket can pass auth through zapSocket; see update()
+
+	// Before binding, attach monitor
+	zmqeSocketMonitorAll(e.pubSocket, "inproc://monitor-pub")
+	e.monSocket = C.zmq_socket(e.context, C.ZMQ_PAIR)
+	zmqeConnect(e.monSocket, "inproc://monitor-pub")
+
 	zmqeBind(e.pubSocket, fmt.Sprintf("tcp://*:%d", pubPort))
+
+	e.inConnNum = 0
 }
 
 func (e *Efunguz) AddWhitelistPublicKeys(publicKeys map[string]bool) {
@@ -502,6 +518,25 @@ func (e *Efunguz) Update() {
 	for _, eh := range e.ehyphae {
 		eh.update()
 	}
+
+	for zmqeGetSockOptEvents(e.monSocket)&C.ZMQ_POLLIN != 0 {
+		event_msg := zmqeRecv(e.monSocket)
+		if len(event_msg) > 0 {
+			if len(event_msg[0]) >= 2 {
+				event_num := uint(event_msg[0][0]) + (uint(event_msg[0][1]) << 8)
+				if event_num&uint(C.ZMQ_EVENT_ACCEPTED) != 0 {
+					e.inConnNum++
+				}
+				if (event_num&uint(C.ZMQ_EVENT_DISCONNECTED) != 0) && (e.inConnNum > 0) {
+					e.inConnNum--
+				}
+			}
+		}
+	}
+}
+
+func (e *Efunguz) InConnectionsNum() uint {
+	return e.inConnNum
 }
 
 func (e *Efunguz) Drop() {
@@ -510,6 +545,7 @@ func (e *Efunguz) Drop() {
 	}
 	e.ehyphae = make(map[string]*Ehypha)
 
+	C.zmq_close(e.monSocket)
 	C.zmq_close(e.pubSocket)
 	C.zmq_close(e.zapSocket)
 
@@ -531,4 +567,6 @@ func (e *Efunguz) Drop() {
 	e.zapSocket = nil
 	e.zapSessionId = []byte{}
 	e.pubSocket = nil
+	e.monSocket = nil
+	e.inConnNum = 0
 }
