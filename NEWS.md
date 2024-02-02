@@ -1,3 +1,13 @@
+Version 0.9.10 (2024.02.02)
+--------------------------
+
+* Renamed `InConnectionsNum()` of Efunguz to `InAbsorbingNum()`
+
+* Added related getters to Efunguz: `InPermittedNum()` (count of incoming connections that passed handshake *up to now*) and `InAttemptedNum()` (count of attempted incoming connections up to now), using socket monitor as well
+
+At almost any instant, `Absorbing` ≤ `Permitted` ≤ `Attempted`.
+
+
 Version 0.9.8 (2024.01.08)
 --------------------------
 

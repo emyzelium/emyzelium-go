@@ -59,8 +59,8 @@ import (
 )
 
 const (
-	LibVersion string = "0.9.8"
-	LibDate    string = "2024.01.08"
+	LibVersion string = "0.9.10"
+	LibDate    string = "2024.02.02"
 
 	DefPubSubPort uint16 = 0xEDAF // 60847
 
@@ -98,18 +98,20 @@ type Ehypha struct {
 }
 
 type Efunguz struct {
-	secretKey           string
-	publicKey           string
-	whitelistPublicKeys map[string]bool
-	torProxyPort        uint16
-	torProxyHost        string
-	ehyphae             map[string]*Ehypha
-	context             unsafe.Pointer
-	zapSocket           unsafe.Pointer
-	zapSessionId        []byte
-	pubSocket           unsafe.Pointer
-	monSocket           unsafe.Pointer
-	inConnNum           uint
+	secretKey               string
+	publicKey               string
+	whitelistPublicKeys     map[string]bool
+	torProxyPort            uint16
+	torProxyHost            string
+	ehyphae                 map[string]*Ehypha
+	context                 unsafe.Pointer
+	zapSocket               unsafe.Pointer
+	zapSessionId            []byte
+	pubSocket               unsafe.Pointer
+	monSocket               unsafe.Pointer
+	inAcceptedNum           uint64
+	inHandshakeSucceededNum uint64
+	inDisconnectedNum       uint64
 }
 
 func timeMuSec() int64 {
@@ -402,7 +404,9 @@ func (e *Efunguz) Init(secretKey string, whitelistPublicKeys map[string]bool, pu
 
 	zmqeBind(e.pubSocket, fmt.Sprintf("tcp://*:%d", pubPort))
 
-	e.inConnNum = 0
+	e.inAcceptedNum = 0
+	e.inHandshakeSucceededNum = 0
+	e.inDisconnectedNum = 0
 }
 
 func (e *Efunguz) AddWhitelistPublicKeys(publicKeys map[string]bool) {
@@ -525,18 +529,33 @@ func (e *Efunguz) Update() {
 			if len(event_msg[0]) >= 2 {
 				event_num := uint(event_msg[0][0]) + (uint(event_msg[0][1]) << 8)
 				if event_num&uint(C.ZMQ_EVENT_ACCEPTED) != 0 {
-					e.inConnNum++
+					e.inAcceptedNum++
 				}
-				if (event_num&uint(C.ZMQ_EVENT_DISCONNECTED) != 0) && (e.inConnNum > 0) {
-					e.inConnNum--
+				if event_num&uint(C.ZMQ_EVENT_HANDSHAKE_SUCCEEDED) != 0 {
+					e.inHandshakeSucceededNum++
+				}
+				if event_num&uint(C.ZMQ_EVENT_DISCONNECTED) != 0 {
+					e.inDisconnectedNum++
 				}
 			}
 		}
 	}
 }
 
-func (e *Efunguz) InConnectionsNum() uint {
-	return e.inConnNum
+func (e *Efunguz) InAttemptedNum() uint64 {
+	return e.inAcceptedNum
+}
+
+func (e *Efunguz) InPermittedNum() uint64 {
+	return e.inHandshakeSucceededNum
+}
+
+func (e *Efunguz) InAbsorbingNum() uint64 {
+	if e.inAcceptedNum >= e.inDisconnectedNum {
+		return e.inAcceptedNum - e.inDisconnectedNum
+	} else {
+		return 0
+	}
 }
 
 func (e *Efunguz) Drop() {
@@ -568,5 +587,7 @@ func (e *Efunguz) Drop() {
 	e.zapSessionId = []byte{}
 	e.pubSocket = nil
 	e.monSocket = nil
-	e.inConnNum = 0
+	e.inAcceptedNum = 0
+	e.inHandshakeSucceededNum = 0
+	e.inDisconnectedNum = 0
 }

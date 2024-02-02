@@ -360,7 +360,15 @@ for !quit { // main program loop
 }
 ```
 
-* get the count of current accepted incoming connections from other efungi via `InConnectionsNum()`
+* get the *current* count (hereafter denoted by `IN1`) of successfully authenticated incoming connections from other efungi, via `InAbsorbingNum()`
+
+* get the *total* count (`IN2`) of successfully authenticated incoming connections, via `InPermittedNum()`
+
+* get the total count (`IN3`) of attempted incoming connections, via `InAttemptedNum()`
+
+Most of the time, `IN1` ≤ `IN2` because some efungi might have disconnected, and `IN2` ≤ `IN3` because some efungi might have not even passed authentication filter.
+
+---
 
 See also `RealmCA.run()` in `demo.go`.
 

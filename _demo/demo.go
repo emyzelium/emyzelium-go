@@ -379,7 +379,7 @@ func (r *RealmCA) run(scr tcell.Screen) {
 				printStrDef(scr, 0, 0, "Render OFF")
 			}
 
-			printStrDef(scr, (h>>1)+2, 0, fmt.Sprintf("This realm: \"%s's\" (birth: %s, survival: %s), SLE %.1f, autoemit (%.1f) %s, InConnsN %d", r.name, intset_to_str(r.birth, true), intset_to_str(r.survival, true), t-tLastEmit, r.autoemitInterval, map[bool]string{false: "OFF", true: "ON"}[autoemit], r.efunguz.InConnectionsNum()))
+			printStrDef(scr, (h>>1)+2, 0, fmt.Sprintf("This realm: \"%s's\" (birth: %s, survival: %s), SLE %.1f, autoemit (%.1f) %s, InAbsorbing %d, InPermitted %d, InAttempted %d", r.name, intset_to_str(r.birth, true), intset_to_str(r.survival, true), t-tLastEmit, r.autoemitInterval, map[bool]string{false: "OFF", true: "ON"}[autoemit], r.efunguz.InAbsorbingNum(), r.efunguz.InPermittedNum(), r.efunguz.InAttemptedNum()))
 			othersStr := ""
 			for i := 0; i < len(r.others); i++ {
 				if i > 0 {
